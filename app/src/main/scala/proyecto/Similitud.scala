@@ -144,7 +144,7 @@ object Similitud {
       documento <- 0 until hs.length
       fragmento <- hs(documento)
     } yield (fragmento, documento)
-    // Se agrupa por fragmento y de cada grupo se queda con los docuemntos
+    // Se agrupa por fragmento y de cada grupo se queda con los documentos
       entradas.groupBy(entrada => entrada._1)
         .map { case (fragmento, grupo) =>
           (fragmento, grupo.map(entrada => entrada._2).toSet)}
