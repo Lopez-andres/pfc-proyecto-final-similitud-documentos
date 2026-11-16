@@ -1,279 +1,331 @@
-# Ejemplo de informe de corrección
+# Informe de corrección: Proyecto final, detección de similitud entre documentos 
 
-Fundamentos de Programación Funcional y Concurrente.
-Documento realizado por el docente Juan Francisco Díaz.
+Asignatura de Fundamentos de Programación Funcional y Concurrente. 
 
-## 1. Argumentar la corrección de programas recursivos
+## Argumentar la corrección 
 
-Sea $f : A \to B$ una función, y $A$ un conjunto definido recursivamente
-(recordar la definición de Matemáticas Discretas I), como por ejemplo los
-naturales o las listas.
+Sea $f : A \to B$ la especificación de una función y $P_f$ el programa en Scala que la 
+implementa. Se demuestra que $P_f$ es correcto probando
 
-Sea $P_f$ un programa recursivo (lineal o en árbol) desarrollado en Scala (o en
-cualquier lenguaje de programación) hecho para calcular $f$:
+$$\forall a \in A : P_f(a) == f(a)$$
 
-```scala
-def Pf(a: A): B = { // Pf recibe a de tipo A, y devuelve f(a) de tipo B
-  ...
-}
+* Para los programas recursivos se usa inducción: se prueba el caso base y, en el caso de 
+  inducción, se supone la hipótesis de inducción (HI) sobre un valor más pequeño. 
+* Para los programas con recursión de cola se define el estado, el invariante y la transformación,
+  y se prueba que el invariante se conserva hasta el estado final. 
+
+**Notación.** Una secuencia se escribe $\langle a_0, \dots, a_{n-1} \rangle$ y la secuencia
+vacía $\langle \rangle$. El tamaño de un conjunto $A$ se escribe $\lvert A \rvert$.
+
+## `normalizar`
+
+### Especificación 
+
+Sea $u$ el texto en minúsculas y $\alpha(c)$ el predicado «$c$ es letra o dígito», que en el 
+código es `c.isLetterOrDigit`. Para una cadena $p$:
+
+* $W(p)$ es la secuencia, en orden, de los tramos máximos no vacíos de caracteres de $p$ que 
+  cumplen $\alpha$. Son las palabras de $p$.
+* $\sigma(p)$ es el sufijo más largo de $p$ cuyos caracteres cumplen todos $\alpha$. Puede ser vacío. 
+* $p^-$ es $p$ sin ese sufijo.
+
+Como $p^-$ es vacía o termina en un separador, se cumple:
+
+$$W(p) = \begin{cases} W(p^-) & \text{si } \sigma(p) \text{ es vacío} \\ W(p^-) \mathbin{:+} \sigma(p) & \text{si no} \end{cases}$$
+
+La especificación es $f(\text{texto}) = W(u)$.
+
+### Estado, invariante y transformación 
+
+`recorrer` es recursión de cola, así que se argumenta como una iteración. 
+
+* **Estado:** $s = (cs, actual, acc)$. Sea $p$ la parte ya revisada, de modo que $u = p \cdot cs$.
+* **Estado inicial:** $s_0 = (u, \text{""}, \langle \rangle)$, con $p$ vacía.
+* **Estado final:** $cs = \text{Nil}$, con $p = u$.
+* **Invariante:** $\text{Inv}(s) \equiv actual = \sigma(p) \ \wedge\ acc = W(p^-)$.
+
+**El invariante vale al inicio.** Con $p$ vacía, $\sigma(p)$ es vacío y $W(p^-) = \langle \rangle$.
+
+**El invariante se conserva.** Sea $cs = c :: resto$ y supóngase $\text{Inv}(s)$. La parte
+revisada pasa a ser $p \cdot c$.
+
+* Si $\alpha(c)$: el estado nuevo es $(resto, actual + c, acc)$. Se tiene
+  $\sigma(p \cdot c) = \sigma(p) \cdot c = actual + c$ y $(p \cdot c)^- = p^-$, luego
+  $acc = W((p \cdot c)^-)$.
+* Si no $\alpha(c)$ y $actual$ es vacío: el estado nuevo es $(resto, \text{""}, acc)$. Un
+  separador no extiende ningún tramo, así que $\sigma(p \cdot c)$ es vacío y
+  $(p \cdot c)^- = p \cdot c$. Como $\sigma(p)$ es vacío, $W(p \cdot c) = W(p) = W(p^-) = acc$.
+* Si no $\alpha(c)$ y $actual$ no es vacío: el estado nuevo es
+  $(resto, \text{""}, acc \mathbin{:+} actual)$. De nuevo $\sigma(p \cdot c)$ es vacío y
+  $(p \cdot c)^- = p \cdot c$, y
+  $W(p \cdot c) = W(p) = W(p^-) \mathbin{:+} \sigma(p) = acc \mathbin{:+} actual$.
+
+**En el estado final se obtiene la respuesta.** Con $cs = \text{Nil}$ y $p = u$, el programa
+devuelve $acc$ si $actual$ es vacío y $acc \mathbin{:+} actual$ si no. Por el invariante y la 
+igualdad de $W$, en ambos casos el resultado es $W(u)$.
+
+**Terminación.** Cada paso quita un carácter de $cs$, así que se llega a $\text{Nil}$ en 
+$\lvert u \rvert$ pasos. 
+
+Por lo tanto $\text{normalizar}(\text{texto}) == W(u)$. $\blacksquare$
+
+De la definición de $W$ se sigue que el resultado no tiene cadenas vacías, porque los tramos 
+son no vacíos. 
+
+## `fragmentos`
+
+### Especificación 
+
+Sea $ts = \langle w_0, \dots, w_{t-1} \rangle$ y $k \ge 1$. El fragmento que empieza en $i$ es
+$g_i = \langle w_i, \dots, w_{i+k-1} \rangle$, y la especificación es:
+
+$$f(ts, k) = \begin{cases} \langle g_0, \dots, g_{t-k} \rangle & \text{si } t \ge k \\ \langle \rangle & \text{si } t < k \end{cases}$$
+
+### Teorema 1: `fragmentos` cumple su especificación 
+
+Se demuestra $\forall t \ge 0 : P_f(ts, k) == f(ts, k)$ por inducción sobre $t$, el largo de $ts$.
+
+**Caso base:** $t < k$.
+
+$$P_f(ts, k) \rightarrow \text{if } (t < k)\ \text{Vector}() \rightarrow \langle \rangle = f(ts, k)$$
+
+**Caso de inducción:** $t \ge k$. La HI es que el programa es correcto para los vectores de 
+largo $t - 1$, en particular para $ts.\text{tail} = \langle w_1, \dots, w_{t-1} \rangle$.
+
+$$P_f(ts, k) \rightarrow ts.\text{take}(k) \mathbin{+:} P_f(ts.\text{tail}, k)$$
+
+* $ts.\text{take}(k) = \langle w_0, \dots, w_{k-1} \rangle = g_0$.
+* Los fragmentos de $ts.\text{tail}$ son los de $ts$ corridos una posición: el que empieza en
+  $i$ dentro de la cola es $\langle w_{i+1}, \dots, w_{i+k} \rangle = g_{i+1}$. Por la HI:
+
+$$P_f(ts.\text{tail}, k) \overset{\text{HI}}{=} f(ts.\text{tail}, k) = \langle g_1, \dots, g_{t-k} \rangle$$
+
+   Cuando $t = k$ la cola tiene $k - 1$ palabras y esta secuencia es vacía. 
+
+Entonces
+
+$$P_f(ts, k) = g_0 \mathbin{+:} \langle g_1, \dots, g_{t-k} \rangle = \langle g_0, \dots, g_{t-k} \rangle = f(ts, k)$$
+
+Por inducción, $\forall t \ge 0 : P_f(ts, k) == f(ts, k)$. $\blacksquare$
+
+### Corolario 1: el tamaño de la huella
+
+Si $t \ge k$, `fragmentos` devuelve exactamente $t - k + 1$ fragmentos, y ninguno si $t < k$.
+La huella $H_k(d)$ es el conjunto de esos fragmentos, y pasar una secuencia a conjunto no 
+puede aumentar su tamaño. Por lo tanto
+
+$$\lvert H_k(d) \rvert \le t - k + 1$$
+
+con igualdad si y solo si el documento no repite ningún fragmento, porque cada repetición 
+quita exactamente un elemento al conjunto. 
+
+## `jaccard`
+
+### Especificación 
+
+$$f(A, B) = \begin{cases} \dfrac{\lvert A \cap B \rvert}{\lvert A \cup B \rvert} & \text{si } A \cup B \neq \emptyset \\ 0 & \text{si } A = B = \emptyset \end{cases}$$
+
+### Demostración 
+
+El programa no es recursivo, así que se sigue por sustitución.
+
+* $comunes = \lvert A \cap B \rvert$, porque `intersect` es la intersección de conjuntos.
+* $total = \lvert A \rvert + \lvert B \rvert - \lvert A \cap B \rvert = \lvert A \cup B \rvert$,
+  por el principio de inclusión y exclusión.
+* $total = 0$ si y solo si $A \cup B = \emptyset$, es decir $A = B = \emptyset$. En ese caso
+  el programa devuelve `0.0`, que es $f(\emptyset, \emptyset)$.
+* Si $total \neq 0$, el programa devuelve $comunes / total$ como `Double`, que es
+  $\lvert A \cap B \rvert / \lvert A \cup B \rvert = f(A, B)$.
+
+Por lo tanto $\text{jaccard}(A, B) == f(A, B)$. $\blacksquare$
+
+**Propiedades.** Como $A \cap B \subseteq A \cup B$, se tiene $0 \le f(A, B) \le 1$. Vale 1
+cuando $A = B \neq \emptyset$ y vale 0 cuando $A \cap B = \emptyset$. Además
+$f(A, B) = f(B, A)$, porque la intersección y la unión son conmutativas.
+
+## `parejas`
+
+### Especificación
+
+$$f(n) = \langle\, (i, j) \mid 0 \le i < j < n \,\rangle \quad \text{en orden lexicográfico}$$
+
+### Demostración 
+
+El `for` se traduce a (ver `Proceso.md`):
+
+```Scala
+(0 until n).flatMap(i => ((i + 1) until n).map(j => (i, j))).toVector
 ```
 
-¿Cómo argumentar que $P_f(a)$ siempre devuelve $f(a)$ como respuesta? Es decir,
-¿cómo argumentar que $P_f$ es correcto con respecto a su especificación?
+* Para un $i$ fijo, el `map` interno produce el bloque
+  $B_i = \langle (i, i+1), \dots, (i, n-1) \rangle$, que es vacío cuando $i = n - 1$.
+* `flatMap` concatena los bloques en el orden de $i$: $B_0, B_1, \dots, B_{n-1}$.
 
-La respuesta es sencilla: demostrando el siguiente teorema.
+**Están todas y solo ellas.** Una pareja $(i, j)$ con $0 \le i < j < n$ aparece en $B_i$,
+porque $j$ está en el rango de $i + 1$ a $n - 1$. Y toda pareja de $B_i$ cumple
+$0 \le i < j < n$ por los límites de los dos rangos.
 
-```math
-\forall a \in A : P_f(a) == f(a)
-```
+**No hay repetidas.** Dos bloques distintos difieren en la primera componente, y dentro de un 
+bloque cada $j$ aparece una vez. 
 
-Cuando uno tiene que demostrar que algo se cumple para todos los elementos de
-un conjunto definido recursivamente, es natural usar inducción estructural. En
-términos prácticos, esto significa demostrar que:
+**El orden es el lexicográfico.** Los bloques van por $i$ creciente, y dentro de cada bloque
+$j$ crece. 
 
-- Para cada valor básico $a$ de $A$, se tiene que $P_f(a) == f(a)$.
-- Para cada valor $a \in A$ construido recursivamente a partir de otro(s)
-  valor(es) $a' \in A$, se tiene que
-  $P_f(a') == f(a') \rightarrow P_f(a) == f(a)$. (Esta es la hipótesis de
-  inducción).
+**Cantidad.** El bloque $B_i$ tiene $n - 1 - i$ parejas, luego 
 
-### Ejemplo: factorial recursivo
+$$\sum_{i=0}^{n-1} (n - 1 - i) = \frac{n(n-1)}{2}$$
 
-Sea $f : \mathbb{N} \to \mathbb{N}$ la función que calcula el factorial de un
-número natural, es decir, $f(n) = n!$. Y sea $P_f$ el siguiente programa en
-Scala:
+Si $n \le 1$ todos los rangos son vacíos y el resultado es $\langle \rangle$.
 
-```scala
-def Pf(n: Int): Int = { // Pf recibe n de tipo Int, y devuelve n! de tipo Int
-  if (n == 0) 1 else n * Pf(n - 1)
-}
-```
+Por lo tanto $\text{parejas}(n) == f(n)$. $\blacksquare$
 
-Vamos a demostrar que $\forall n \in \mathbb{N} : P_f(n) == n!$
+## `parejasCandidatas`
 
-**Caso base:** $n = 0$
+### Especificación 
 
-```math
-P_f(0) \rightarrow \text{if } (0 == 0)\ 1 \text{ else } 0 \ast P_f(-1) \rightarrow 1
-```
+Sea $idx$ un índice. El conjunto de candidatas es 
 
-Por otro lado, $f(0) = 0! = 1$. Entonces $P_f(0) == f(0)$.
+$$K(idx) = \lbrace\, (i, j) \mid i < j \ \wedge\ \exists g : i \in idx(g) \wedge j \in idx(g) \,\rbrace$$
 
-**Caso de inducción:** $n = k + 1$, $k \geq 0$. Hay que demostrar:
-$P_f(k) == f(k) \rightarrow P_f(k + 1) == f(k + 1)$
+y la especificación $f(idx)$ es la secuencia de los elementos de $K(idx)$, sin repetir y en
+orden lexicográfico. 
 
-```math
-P_f(k+1) \rightarrow \text{if } (k+1 == 0)\ 1 \text{ else } (k+1) \ast P_f(k) \rightarrow (k+1) \ast P_f(k)
-```
+### Teorema 2: `parejasCandidatas` cumple su especificación 
 
-Usando la hipótesis de inducción (HI):
+**Paso 1: $cand = K(idx)$.** El `for` recorre cada conjunto $ds$ de los valores del índice y
+produce $(i, j)$ para todo $i \in ds$, $j \in ds$ con $i < j$. Esa es la condición que define
+$K(idx)$, y `toSet` deja cada pareja una sola vez.
 
-```math
-\rightarrow (k+1) \ast k! = (k+1)!
-```
+**Paso 2: si $cand$ es vacío.** El programa devuelve `Vector()`, que es $f(idx)$.
 
-Por lo tanto, $P_f(k + 1) == f(k + 1)$.
+**Paso 3: si $cand$ no es vacío.** Sea $m$ el mayor $j$ entre las parejas de $cand$, que es lo
+que calcula `cand.map(par => par._2).max`. Toda pareja $(i, j) \in cand$ cumple
+$0 \le i < j \le m$, es decir $0 \le i < j < m + 1$. Por la corrección de `parejas`, está en
+$\text{parejas}(m + 1)$.
 
-Concluimos por inducción que $\forall n \in \mathbb{N} : P_f(n) == n!$
+`filter` deja exactamente los elementos de $\text{parejas}(m + 1)$ que están en $cand$ y
+conserva su orden. Como $cand \subseteq \text{parejas}(m + 1)$, el resultado tiene todos los 
+elementos de $cand$; como `parejas` no tiene repetidos y está en orden lexicográfico, el
+resultado tampoco tiene repetidos y está en ese orden. 
 
-### Ejemplo: el máximo de una lista
+Por lo tanto $\text{parejasCandidatas}(idx) == f(idx)$. $\blacksquare$
 
-Sea $f : \text{List}[\mathbb{N}] \to \mathbb{N}$ la función que calcula el
-máximo de una lista de enteros positivos, no vacía. Y sea $P_f$ el siguiente
-programa en Scala:
+### Teorema 3: una pareja que no es candidata tiene similitud cero
 
-```scala
-def maxLin(l: List[Int]): Int = {
-  if (l.tail.isEmpty) l.head
-  else math.max(maxLin(l.tail), l.head)
-}
-```
+Sea $idx$ el índice invertido del corpus, que por su especificación cumple
+$i \in idx(g) \iff g \in H_k(d_i)$. La corrección de `indiceInvertido` se argumenta en su
+propia sección.
 
-Demostraremos que:
+Sea $(i, j)$ con $i < j$ que **no** es candidata. Entonces no existe $g$ con $i \in idx(g)$ y
+$j \in idx(g)$, es decir, no existe $g$ que esté en $H_k(d_i)$ y en $H_k(d_j)$:
 
-```math
-\forall n \in \mathbb{N} \setminus \{0\} : P_f(\text{List}(a_1, a_2, \ldots, a_n)) == f(\text{List}(a_1, a_2, \ldots, a_n))
-```
+$$H_k(d_i) \cap H_k(d_j) = \emptyset$$
 
-**Caso base:** $n = 1$
+Por la corrección de `jaccard`, $comunes = 0$ y el resultado es 0, tanto si $total = 0$ como
+si no. Por lo tanto $J(H_k(d_i), H_k(d_j)) == 0$. $\blacksquare$
 
-```math
-P_f(\text{List}(a_1)) \rightarrow \text{if } \text{List}(a_1).\text{tail.isEmpty then } \text{List}(a_1).\text{head else } \ldots \rightarrow \text{List}(a_1).\text{head} \rightarrow a_1
-```
+**Consecuencia.** Con un umbral $\tau > 0$, una pareja de similitud 0 nunca entra al ranking. 
+Las parejas que `detectarConIndice` deja de comparar son justamente esas, así que las dos soluciones filtran el mismo conjunto
+de mediciones. Como el resultado de `ranking` no depende del orden de llegada (Teorema 5), `detectarDirecto` y `detectarConIndice` 
+producen el mismo ranking.
 
-Por otro lado, $f(\text{List}(a_1)) = a_1$. Entonces
-$P_f(\text{List}(a_1)) == f(\text{List}(a_1))$.
+## `ranking`
 
-**Caso de inducción:** $n = k + 1$, $k \geq 1$. Se debe demostrar:
+### Especificación 
 
-```math
-P_f(\text{List}(b_1, b_2, \ldots, b_k)) == f(\text{List}(b_1, b_2, \ldots, b_k)) \rightarrow P_f(\text{List}(a_1, a_2, \ldots, a_{k+1})) == f(\text{List}(a_1, a_2, \ldots, a_{k+1}))
-```
+Sobre las mediciones se define el orden $m_1 \prec m_2$, que en el código es `vaAntes`:
 
-Empecemos por calcular qué devuelve $P_f$ usando el modelo de sustitución:
+$$m_1 \prec m_2 \iff s_1 > s_2 \ \vee\ \big( s_1 = s_2 \wedge ( i_1 < i_2 \vee ( i_1 = i_2 \wedge j_1 < j_2 ) ) \big)$$
 
-```math
-P_f(L) \rightarrow \text{if } L.\text{tail.isEmpty then } L.\text{head else math.max}(P_f(L.\text{tail}), L.\text{head})
-```
+donde $m_1 = (i_1, j_1, s_1)$ y $m_2 = (i_2, j_2, s_2)$. La especificación $f(ss, \tau, p)$ es:
+tomar las mediciones de $ss$ con $s \ge \tau$, ordenarlas según $\prec$ y dejar las primeras $p$.
 
-```math
-\rightarrow \text{math.max}(P_f(\text{List}(a_2, \ldots, a_{k+1})), a_1)
-```
-
-Sea $b = P_f(\text{List}(a_2, \ldots, a_{k+1}))$; por la hipótesis de
-inducción, $b = f(\text{List}(a_2, \ldots, a_{k+1}))$. Hay dos posibilidades:
+### Lema 1: $\prec$ es un orden total estricto 
 
-- Si $\text{math.max}(b, a_1) = b$, entonces $b \geq a_1$ y
- $b == f(\text{List}(a_1, a_2, \ldots, a_{k+1}))$.
-- Si $\text{math.max}(b, a_1) = a_1$, entonces $a_1 \geq b$ y
- $a_1 == f(\text{List}(a_1, a_2, \ldots, a_{k+1}))$.
+$\prec$ compara primero por similitud de mayor a menor, luego por $i$ y luego por $j$ de menor
+a mayor: es un orden lexicográfico sobre tres componentes que tienen cada una orden total. 
+Dos mediciones con parejas $(i, j)$ distintas difieren en alguna componente, así que siempre 
+una va antes que la otra. Las mediciones del proyecto tienen parejas distintas, porque 
+`parejas` y `parejasCandidatas` no repiten. 
 
-Por lo tanto, $P_f(L) == f(L)$.
+### Lema 2: `mezclar` junta dos listas ordenadas
 
-Concluimos por inducción que:
+`mezclar` es recursión de cola, así que se argumenta con un invariante.
 
-```math
-\forall n \in \mathbb{N} \setminus \{0\} : P_f(\text{List}(a_1, a_2, \ldots, a_n)) == f(\text{List}(a_1, a_2, \ldots, a_n))
-```
-
-## 2. Argumentar la corrección de programas iterativos
-
-Para argumentar la corrección de programas iterativos, se debe formalizar cómo
-es la iteración. Esto implica definir:
+* **Estado:** $s = (xs, ys, acc)$.
+* **Estado inicial:** $s_0 = (X, Y, \text{Nil})$, con $X$ e $Y$ ordenadas según $\prec$.
+* **Estado final:** $xs = \text{Nil}$ o $ys = \text{Nil}$.
+* **Invariante:** $xs$ e $ys$ están ordenadas; $acc.\text{reverse}$ está ordenada; todo
+  elemento de $acc$ va antes que todos los de $xs$ y de $ys$; y los elementos de $acc$, $xs$
+  e $ys$ juntos son los de $X$ e $Y$.
 
-- Cómo se representa un estado de la iteración, $s$.
-- Cuál es el estado inicial, $s_0$.
-- Cuál es el estado final (o cómo se reconoce que un estado es final): $s_f$.
-- Qué condición (o predicado) cumple todo estado: $\text{Inv}(s)$ (invariante
-  de la iteración).
-- El mecanismo para pasar de un estado al siguiente: $\text{transformar}(s)$.
-  Si $s_i$ es el estado $i$, entonces $\text{transformar}(s_i) = s_{i+1}$.
-
-Un programa iterativo tiene la siguiente forma:
-
-```scala
-def Pf(a: A): B = { // Pf recibe a de tipo A, y devuelve f(a) de tipo B
-  def Pf_iter(s: Estado): B =
-    if (esFinal(s)) respuesta(s) else Pf_iter(transformar(s))
-  Pf_iter(s0)
-}
-```
+**Al inicio** $acc$ es vacío y el invariante vale porque $X$ e $Y$ están ordenadas. 
 
-Demostración de corrección:
+**Se conserva.** Sean $xs = x :: xs_1$ e $ys = y :: ys_1$.
 
-- $\text{Inv}(s_0)$: el estado inicial cumple la condición invariante.
-- Si $(s_i \neq s_f \land \text{Inv}(s_i)) \rightarrow \text{Inv}(\text{transformar}(s_i))$:
-  el nuevo estado cumple la condición invariante si el estado anterior la
-  cumplía.
-- De lo anterior se concluye $\text{Inv}(s_f)$, es decir, el estado final
-  cumple la condición invariante. Luego,
-  $\text{Inv}(s_f) \rightarrow \text{respuesta}(s_f) == f(a)$.
-- Finalmente, demostrar que siempre se llega al estado final $s_f$. Esto
-  implica que
-  $P_f(a) == \text{iter}(s_0) == \text{respuesta}(s_f) == f(a)$.
+* Si $x \prec y$: $x$ va antes que el resto de $xs$, porque $xs$ está ordenada, y antes que
+  todos los de $ys$, porque va antes que su primer elemento. Al pasar $x$ al acumulador,
+  $acc.\text{reverse}$ sigue ordenada, porque todos los de $acc$ iban antes que $x$.
+* Si no $x \prec y$: por el Lema 1, $y$ va antes que $x$ o son iguales, y el argumento es el
+  mismo con $y$.
 
-### Ejemplo: factorial iterativo
+**En el estado final** una lista está vacía y el programa devuelve $acc.\text{reverse}$
+seguido de la otra. Por el invariante el resultado está ordenado y tiene los elementos de
+$X$ e $Y$.
 
-Considere el siguiente programa iterativo en Scala para calcular la función
-factorial:
+**Terminación.** Cada paso quita un elemento de $xs$ o de $ys$.
 
-```scala
-def Pf(n: Int): Int = { // Pf recibe n de tipo Int, y devuelve n! de tipo Int
-  def Pf_iter(i: Int, n: Int, ac: Int): Int =
-    if (i > n) ac else Pf_iter(i + 1, n, i * ac)
-  Pf_iter(1, n, 1)
-}
-```
+Por lo tanto $\text{mezclar}(X, Y, \text{Nil})$ es la lista ordenada con los elementos de 
+$X$ e $Y$. $\blacksquare$
 
-Este programa implementa el siguiente proceso iterativo:
+### Teorema 4: `msort` ordena
 
-- Un estado $s = (i, n, ac)$.
-- El estado inicial es $s_0 = (1, n, 1)$.
-- $(i, n, ac)$ es final si $i > n$, o lo que es lo mismo, si $i = n + 1$.
-- La invariante de ciclo es
-  $\text{Inv}(i, n, ac) \equiv i \leq n + 1 \land ac = (i-1)!$.
-  La invariante de ciclo es una relación que SIEMPRE se cumple en el ciclo.
-- $\text{transformar}((i, n, ac)) = (i+1, n, i \ast ac)$.
+Se demuestra por inducción fuerte sobre el largo $m$ de $xs$ que $\text{msort}(xs)$ es la 
+lista ordenada según $\prec$ con los mismos elementos de $xs$. 
 
-Ahora, demostramos los puntos mencionados:
+**Caso base:** $m \le 1$. Entonces $n = \lfloor m / 2 \rfloor =0$ y el programa devuelve
+$xs$, que con cero o un elemento ya está ordenada. 
 
-**1.** $\text{Inv}(s_0)$: el estado inicial cumple la condición invariante.
+**Caso de inducción:** $m \ge 2$. La HI es que `msort` ordena toda lista de largo menor que $m$.
+Aquí $n = \lfloor m / 2 \rfloor$ cumple $1 \le n < m$, así que las dos mitades $l_1$ y $l_2$
+tienen largos $n$ y $m - n$, ambos menores que $m$.
 
-```math
-s_0 = (1, n, 1) \implies 1 \leq n + 1 \land 1 = 0!
-```
+$$\text{msort}(xs) \rightarrow \text{mezclar}(\text{msort}(l_1), \text{msort}(l_2), \text{Nil})$$
 
-**2.** La invariante se mantiene con la transformación de estados,
-$(s_i \neq s_f \land \text{Inv}(s_i)) \rightarrow \text{Inv}(\text{transformar}(s_i))$:
+Por la HI, $\text{msort}(l_1)$ y $\text{msort}(l_2)$ están ordenadas y tienen los elementos
+de $l_1$ y de $l_2$. Por el Lema 2, la mezcla está ordenada y tiene los elementos de las dos,
+que son los de $xs$.
 
-1. Primer cambio, $i = i + 1$, lo que implica $ac = ((i+1) - 1)! = i!$.
-2. Segundo cambio, $ac = i \ast ac$, entonces $ac = (i - 1)! \ast i = i!$.
-3. Como se puede ver en ambos cambios indicados en la transformación, la
-   invariante se mantiene.
+Por inducción fuerte, `msort` ordena toda lista. $\blacksquare$
 
-**3.** $\text{Inv}(s_f) \rightarrow \text{respuesta}(s_f) == f(a)$
+### Teorema 5: `ranking` cumple su especificación 
 
-```math
-(n + 1 \leq n + 1) \land ac = ((n+1)-1)! \rightarrow ac == n!
-```
+$$\text{ranking}(ss, \tau, p) \rightarrow \text{msort}(\text{filter}(ss)).\text{take}(p)$$
 
-**4.** En cada paso, la componente $i$ del estado incrementa, acercándose a $n+1$.
-Después de $n$ iteraciones, se alcanza $n+1$.
+* `filter(m => m._3 >= umbral)` deja exactamente las mediciones con $s \ge \tau$.
+* Por el Teorema 4, `msort` las devuelve ordenadas según $\prec$.
+* `take(p)` deja las primeras $p$, o todas si hay menos.
 
-Esto implica que $P_f(n) == \text{iter}(1, n, 1) == n!$
+Eso es $f(ss, \tau, p)$. $\blacksquare$
 
-### Ejemplo: el máximo de una lista
+**El resultado no depende del orden de llegada.** Por el Lema 1, $\prec$ es un orden total 
+estricto, y un conjunto tiene una sola forma de quedar ordenado bajo un orden así. Si $ss'$
+es una permutación de $ss$, el filtro deja las mismas mediciones y `msort` las deja en la
+misma secuencia, luego $\text{ranking}(ss', \tau, p) == \text{ranking}(ss, \tau, p)$.
 
-Se desea calcular el máximo de una lista de enteros positivos, no vacía. Sea
-$f : \text{List}[\mathbb{N}] \to \mathbb{N}$ la función que calcula ese valor.
-Y sea $P_f$ el siguiente programa en Scala:
+## Casos de prueba
 
-```scala
-def maxIt(l: List[Int]): Int = {
-  def maxAux(max: Int, l: List[Int]): Int = {
-    if (l.isEmpty) max
-    else maxAux(math.max(max, l.head), l.tail)
-  }
-  maxAux(l.head, l.tail)
-}
-```
+Las pruebas están en `app/src/test/scala/proyecto/SimilitudTest.scala` y se ejecutan con
+`./gradlew test`. Además de las de contrato, cada función tiene cinco casos propios:
 
-Este programa implementa el siguiente proceso iterativo:
+| Función             | Qué cubren los cinco casos                                                                 |
+|---------------------|--------------------------------------------------------------------------------------------|
+| `normalizar`        | signos de puntuación, separadores repetidos, texto vacío, dígitos y última palabra, tildes y ñ |
+| `fragmentos`        | `k = 1`, `k` igual al largo, menos de `k` palabras, fragmentos repetidos, cantidad `t - k + 1` |
+| `jaccard`           | huellas iguales, disjuntas, vacías, una contenida en otra, solapamiento parcial y simetría  |
+| `parejas`           | `n = 4` completo, `n = 0` y `n = 1`, `n = 2`, cantidad e `i < j`, sin repetidos y en orden  |
+| `parejasCandidatas` | índice vacío, conjuntos de un documento, pareja repetida, tres documentos, entradas mezcladas |
+| `ranking`           | umbral inclusivo, empates, truncar a `p`, vacío, vector largo                                |
 
-- Un estado $s = (max, l)$ donde $l = \text{List}(a_i, a_{i+1}, \ldots, a_k)$
-  es una cola de $L$.
-- El estado inicial es
-  $s_0 = (L.\text{head}, L.\text{tail}) = (a_1, \text{List}(a_2, \ldots, a_k))$.
-- $s = (max, l)$ es final si $l$ es vacía.
-- $\text{Inv}(max, l) \equiv l = \text{List}(a_i, a_{i+1}, \ldots, a_k) \land max = f(\text{List}(a_1, a_2, \ldots, a_{i-1}))$.
-- $\text{transformar}((max, l)) = (nmax, l.\text{tail})$ donde $nmax = max$ si
-  $max \geq l.\text{head}$, y $nmax = l.\text{head}$ si no.
-
-Demostración de los puntos:
-
-**1.** $\text{Inv}(s_0)$: el estado inicial cumple la condición invariante.
-
-```math
-s_0 = (a_1, \text{List}(a_2, \ldots, a_k)) \implies a_1 = f(\text{List}(a_1))
-```
-
-**2.** $(s_i \neq s_f \land \text{Inv}(s_i)) \rightarrow \text{Inv}(\text{transformar}(s_i))$
-
-```math
-\neg\, l.\text{isEmpty} \land l = \text{List}(a_i, a_{i+1}, \ldots, a_k) \land max = f(\text{List}(a_1, a_2, \ldots, a_{i-1}))
-```
-
-```math
-\rightarrow l.\text{tail} = \text{List}(a_{i+1}, \ldots, a_k) \land nmax = f(\text{List}(a_1, \ldots, a_i))
-```
-
-**3.** $\text{Inv}(s_f) \rightarrow \text{respuesta}(s_f) == f(a)$
-
-```math
-\text{Inv}((max, \text{List}())) \rightarrow max = f(\text{List}(a_1, \ldots, a_k))
-```
-
-**4.** En cada paso, la lista $l$ se reduce, acercándose a ser vacía. Después de
-$k$ iteraciones, $l = \text{List}()$.
-
-Esto implica que $P_f(L) == \text{maxAux}(L.\text{head}, L.\text{tail}) == f(L)$
+Cada caso corresponde a una parte de la demostración: los vacíos a los casos base, los 
+repetidos y los empates a los lemas, y las cantidades a las fórmulas.
