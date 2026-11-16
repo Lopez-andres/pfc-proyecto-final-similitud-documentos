@@ -17,8 +17,12 @@ import Similitud._
 object SimilitudPar {
 
   /** Resume las dos mitades del corpus en paralelo. */
-  def huellasPar(c: Corpus, k: Int): Vector[Huella] = ???
+  def huellasPar(c: Corpus, k: Int): Vector[Huella] = {
 
+    val (corpusIzq, corpusDer) = c.splitAt(c.length / 2)
+    val (huellasIzq, huellasDer) = parallel(huellas(corpusIzq, k), huellas(corpusDer, k))
+    huellasIzq ++ huellasDer
+  }
   /**
    * Dividir y vencer sobre el vector de parejas: por debajo de `corte` se
    * resuelve secuencialmente, y por encima se parte en dos mitades que se
@@ -44,7 +48,11 @@ object SimilitudPar {
 
   /** La solución directa, con las huellas y las comparaciones en paralelo. */
   def detectarDirectoPar(c: Corpus, k: Int, umbral: Double, p: Int,
-                         corte: Int): Vector[Medicion] = ???
+                         corte: Int): Vector[Medicion] = {
+    val huellasCorpus = huellasPar(c, k)
+    val todasLasParejas = parejas(huellasCorpus.length)
+    ranking(similitudesPar(huellasCorpus, todasLasParejas, corte), umbral, p)
+  }
 
   /** La solución con índice, con las tres etapas en paralelo. */
   def detectarConIndicePar(c: Corpus, k: Int, umbral: Double, p: Int,

@@ -80,10 +80,12 @@ object Similitud {
   def fragmentos(ts: Vector[String], k: Int): Vector[Fragmento] = ???
 
   /** El conjunto de fragmentos del documento: un repetido cuenta una vez. */
-  def huella(d: Documento, k: Int): Huella = ???
+  def huella(d: Documento, k: Int): Huella =
+    fragmentos(palabrasDoc(d), k).toSet
 
   /** Una huella por documento del corpus, en el mismo orden. */
-  def huellas(c: Corpus, k: Int): Vector[Huella] = ???
+  def huellas(c: Corpus, k: Int): Vector[Huella] =
+    c.map(documento => huella(documento, k))
 
   /**
    * Índice de Jaccard de dos huellas, el tamaño de la intersección sobre el de
@@ -95,13 +97,28 @@ object Similitud {
   def parejas(n: Int): Vector[Pareja] = ???
 
   /** La similitud de cada pareja que se le pase, en el mismo orden. */
-  def similitudes(hs: Vector[Huella], ps: Vector[Pareja]): Vector[Medicion] = ???
+  def similitudes(hs: Vector[Huella], ps: Vector[Pareja]): Vector[Medicion] = {
+    ps.map { case (primerDocumento, segundoDocumento) =>
+      (primerDocumento, segundoDocumento,
+      jaccard(hs(primerDocumento), hs(segundoDocumento)))
+    }
+  }
 
   /**
    * El mapa de cada fragmento al conjunto de documentos donde aparece, con los
    * documentos identificados por su posición en el vector de huellas.
    */
-  def indiceInvertido(hs: Vector[Huella]): Indice = ???
+  def indiceInvertido(hs: Vector[Huella]): Indice = {
+    //Una entrada (fragmento, documento) por cada fragmento de cada huella
+    val entradas =  for {
+      documento <- 0 until hs.length
+      fragmento <- hs(documento)
+    } yield (fragmento, documento)
+    // Se agrupa por fragmento y de cada grupo se queda con los docuemntos
+      entradas.groupBy(entrada => entrada._1)
+        .map { case (fragmento, grupo) =>
+          (fragmento, grupo.map(entrada => entrada._2).toSet)}
+  }
 
   /**
    * Las parejas que comparten al menos un fragmento, sin repetir y ordenadas.
