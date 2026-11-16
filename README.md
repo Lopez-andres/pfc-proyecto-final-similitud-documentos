@@ -22,7 +22,6 @@ nota.
 | andres mauricio peña lopez | 2380335-2724 |
 | katherine lopez unas | 2380339-2724 |
 | luz amelia ibarguen | 2380404-2724 |
-| | |
 
 ## El problema, en una línea
 
