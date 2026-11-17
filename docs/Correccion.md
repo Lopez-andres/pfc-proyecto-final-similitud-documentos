@@ -283,7 +283,7 @@ $X$ e $Y$. $\blacksquare$
 Se demuestra por inducción fuerte sobre el largo $m$ de $xs$ que $\text{msort}(xs)$ es la 
 lista ordenada según $\prec$ con los mismos elementos de $xs$. 
 
-**Caso base:** $m \le 1$. Entonces $n = \lfloor m / 2 \rfloor =0$ y el programa devuelve
+**Caso base:** $m \le 1$. Entonces $n = \lfloor m / 2 \rfloor = 0$ y el programa devuelve
 $xs$, que con cero o un elemento ya está ordenada. 
 
 **Caso de inducción:** $m \ge 2$. La HI es que `msort` ordena toda lista de largo menor que $m$.
@@ -329,3 +329,318 @@ Las pruebas están en `app/src/test/scala/proyecto/SimilitudTest.scala` y se eje
 
 Cada caso corresponde a una parte de la demostración: los vacíos a los casos base, los 
 repetidos y los empates a los lemas, y las cantidades a las fórmulas.
+
+## Funciones sin recursión: método y resultados que se usan
+
+Las funciones `huella`, `huellas`, `huellasPar`, `similitudes`, `indiceInvertido` y `detectarDirectoPar` no son recursivas ni iterativas: no se llaman a sí mismas ni cambian un estado. Por eso aquí no hay hipótesis de inducción ni invariante. La demostración consiste en calcular qué devuelve el programa con el modelo de sustitución y compararlo con la especificación $f$. Un paso de evaluación se escribe $P(x) \rightarrow e$.
+
+**Notación adicional.** Se siguen usando $g_i$, $H_k(d)$ y $J$ de las secciones anteriores.
+
+| Símbolo | Significado |
+|---|---|
+| $H_i$ | abrevia $H_k(d_i)$, la huella del documento $i$, cuando $k$ se sobreentiende |
+| $I(g)$ | $\lbrace\, i \mid g \in H_i \,\rbrace$: los documentos cuya huella contiene el fragmento $g$ |
+| $\tau$, $p$ | umbral y número máximo de resultados |
+
+**Resultados ya demostrados que se usan como hechos.**
+
+| Función | Qué se usa |
+|---|---|
+| `fragmentos(ts, k)` | Teorema 1: devuelve $\langle g_0, \dots, g_{t-k} \rangle$ si $t \ge k$ y $\langle \rangle$ si $t < k$ |
+| `jaccard(A, B)` | su demostración: devuelve $J(A, B)$ |
+| `parejas(n)` | su demostración: todas las $(i, j)$ con $0 \le i < j < n$, sin repetir y en orden lexicográfico|
+| `ranking(ss, umbral, p)`| Teorema 5: deja las mediciones con $s \ge \tau$, las ordena según $\prec$ y toma las primeras $p$. Además no depende del orden de llegada |
+| `similitudesPar(hs, ps, corte)` | se usa su especificación: da el mismo resultado que `similitudes(hs, ps)` para cualquier `corte` |
+
+**Hechos sobre la biblioteca de Scala**, los vistos en clase para colecciones y para `parallel`:
+
+* `map` sobre un `Vector` devuelve un vector del mismo largo, donde la posición $i$ es la función aplicada al elemento $i$.
+* `splitAt(m)` sobre un vector $c$ devuelve $(c_1, c_2)$, con $c_1$ los primeros $m$ elementos y $c = c_1 \mathbin{++} c_2$.
+* `parallel(e1, e2)` devuelve un valor idéntico a $(e1, e2)$. Solo cambia el tiempo de ejecución, no el resultado.
+
+## `huella`
+
+### Especificación
+
+$$f(d, k) = H_k(d) = \lbrace\, g_i \mid 0 \le i \le t - k \,\rbrace$$
+
+Es el conjunto de los fragmentos de $k$ palabras de $d$.
+Aquí $t$ es el número de palabras de $d$ y $g_i$ es el fragmento de $k$ palabras que empieza en la palabra $i$. Si $t < k$ no hay ningún inicio válido y el conjunto es vacío.
+
+Se desea demostrar:
+
+$$\forall d, \forall k \ge 1 : P_{\text{huella}}(d, k) == H_k(d)$$
+
+### Demostración 
+
+El programa no es recursivo. Se separan dos casos, según quepa o no algún fragmento.
+
+**Caso $t \ge k$.**
+
+$$P_{\text{huella}}(d, k) \rightarrow \text{fragmentos}(\text{palabrasDoc}(d), k)\text{.toSet}$$
+
+`palabrasDoc(d)` es el vector de palabras $\langle w_0, \dots, w_{t-1} \rangle$: toma la segunda componente de la pareja y deja el nombre fuera. Por el Teorema 1:
+
+$$\rightarrow \text{Vector}(g_0, \dots, g_{t-k})\text{.toSet} \rightarrow \lbrace\, g_0, \dots, g_{t-k} \,\rbrace = H_k(d)$$
+
+`toSet` conserva los mismos elementos y, si uno aparece varias veces, deja una sola copia. No introduce otros valores. Luego la huella implementada es $H_k(d)$.
+
+**Caso $t < k$.** `fragmentos` devuelve `Vector()` y `Vector().toSet` es `Set()`. Por otro lado, no existe $i$ con $0 \le i\le t - k$, porque $t - k < 0$, así que $H_k(d) = \emptyset$. Son iguales.
+ 
+Por lo tanto $P_{\text{huella}}(d, k) == H_k(d)$. $\blacksquare$
+
+**Tamaño de la huella.** Sea $N = \max(0, t - k + 1)$. Por el Teorema 1, 
+`fragmentos` produce $N$ fragmentos. Pasar a conjunto no puede aumentar el tamaño, así que por el Corolario 1 
+
+$$\lvert H_k(d) \rvert \le N$$
+
+con igualdad si y solo si el documento no repite ningún fragmento. Se escribe $N$ con el máximo porque, para $t < k$, $t - k + 1$ puede ser negativo y una cantidad de elementos no lo es.
+
+### Aplicación a ejemplos
+
+| Documento | $k$ | $N$ | $\lvert H \rvert$ | Caso |
+|---|---|---|---|---|
+| `a b a b a b` | 2 | 5 | 2 | repite: desigualdad estricta |
+| `la casa es grande y la casa es azul` | 3 | 7 | 6 | repite `(la casa es)` |
+| `el gato duerme en el sofa` | 3 | 4 | 4 | no repite: igualdad |
+
+## `huellas`
+
+### Especificación
+
+Sea $c = \langle d_0, \dots, d_{n-1} \rangle$:
+
+$$f(c, k) = \langle H_k(d_0), \dots, H_k(d_{n-1}) \rangle$$
+
+La huella del documento $i$ queda en la posición $i$. Las demás funciones dependen de esa correspondencia, porque el índice invertido guarda posiciones.
+
+Se desea demostrar:
+ 
+$$\forall c, \forall k \ge 1 : P_{\text{huellas}}(c, k) == f(c, k)$$
+
+### Demostración 
+
+$$P_{\text{huellas}}(c, k) \rightarrow c\text{.map}(d \rightarrow \text{huella}(d, k)) \rightarrow \langle \text{huella}(d_0, k), \dots, \text{huella}(d_{n-1}, k) \rangle$$
+
+La segunda flecha vale porque `map` conserva el largo y las posiciones. Por la demostración de `huella`, $\text{huella}(d_i, k) == H_k(d_i)$ para cada $i$. Luego el resultado es $\langle H_k(d_0), \dots, H_k(d_{n-1}) \rangle = f(c, k)$. $\blacksquare$
+
+**Casos límite.** Si $n = 0$, el programa y la especificación dan el vector vacío.
+Un documento con menos de $k$ palabras da `Set()` en su propia posición: no se omite, porque `map` no descarta elementos. 
+
+### Aplicación a ejemplos
+
+Con `"el sol sale temprano"`, `"hoy"` y `"mañana llueve mucho hoy"`, y $k = 2$, los tamaños de las huellas son `Vector(3, 0, 3)`. El segundo documento tiene $t = 1 < 2$, su huella es `Set()` y queda en la posición 1. Con un corpus vacío el resultado es `Vector()`.
+
+## `huellasPar`
+
+### Especificación
+
+`huellasPar` debe dar el mismo resultado que `huellas`, es decir, la especificación de `huellas`:
+
+$$f(c, k) = \langle H_k(d_0), \dots, H_k(d_{n-1}) \rangle$$
+
+Se desea demostrar:
+
+$$\forall c, \forall k \ge 1 : P_{\text{huellasPar}}(c, k) == P_{\text{huellas}}(c, k)$$
+
+Como $P_{\text{huellas}}(c, k) == f(c, k)$, esto prueba que `huellasPar` también cumple la especificación.
+
+### Lema (map sobre una concatenación)
+
+Para vectores $c_1$, $c_2$ y una función $g$:
+
+$$(c_1 \mathbin{++} c_2)\text{.map}(g) = c_1\text{.map}(g) \mathbin{++}
+c_2\text{.map}(g)$$
+
+*Demostración.* El resultado de `map` en la posición $i$ es $g$ aplicada al elemento $i$. En $c_1 \mathbin{++} c_2$ las primeras $\lvert c_1 \rvert$ posiciones son las de $c_1$ y las siguientes son las de $c_2$, en el mismo orden. Lo mismo ocurre en el lado derecho. $\blacksquare$
+
+Como $\text{huellas}(c, k)$ es $c\text{.map}(d \Rightarrow \text{huella}(d, k))$,
+el lema da:
+
+$$\text{huellas}(c_1 \mathbin{++} c_2, k) = \text{huellas}(c_1, k) \mathbin{++}
+\text{huellas}(c_2, k)$$
+
+### Demostración
+
+Sea $n$ el largo de $c$ y $m = \lfloor n /2 \rfloor$, que es `c.length /2`. Por `splitAt`, `c.splitAt(m)` devuelve $(c_1, c_2)$ con $c = c_1 \mathbin{++} c_2$.
+
+$$P_{\text{huellasPar}}(c, k) \rightarrow \text{huellasIzq} \mathbin{++}
+\text{huellasDer}, \quad (\text{huellasIzq}, \text{huellasDer}) = \text{parallel}
+(\text{huellas}(c_1, k), \text{huellas}(c_2, k))$$
+
+Por el contrato de `parallel`, ese par es $(\text{huellas}(c_1, k), \text{huellas}(c_2, k))$. Entonces:
+
+$$\rightarrow \text{huellas}(c_1, k) \mathbin{++} \text{huellas}(c_2, k) =
+\text{huellas}(c_1 \mathbin{++} c_2, k) = \text{huellas}(c, k) \quad \text{(porque } c = c_1 \mathbin{++} c_2 \text{)} \quad \blacksquare$$
+
+### Las dos ramas son independientes
+
+Cada rama solo lee valores inmutables (`Vector`, `Set`, `String`) y produce valores nuevos: no hay `var` ni colecciones mutables. Una rama puede terminar antes que la otra y eso no cambia el resultado, porque `parallel` espera a las dos y la concatenación pone siempre la mitad izquierda primero.
+
+### Casos límite
+
+Si $n = 0$, `splitAt(0)` devuelve dos vectores vacíos y el resultado es `Vector()`.
+Si $n = 1$, $m = 0$: la izquierda queda vacía y la derecha contiene el documento.
+
+### Aplicación a ejemplos
+
+| $n$ | $m$ | Izquierda | Derecha |
+|---|---|---|---|
+| 3 | 1 | $d_0$ | $d_1, d_2$ |
+| 4 | 2 | $d_0, d_1$ | $d_2, d_3$ |
+| 5 | 2 | $d_0, d_1$ | $d_2, d_3, d_4$ |
+
+Con `e0` a `e3` y $k = 3$, el resultado tiene tamaños `Vector(7, 7, 6, 6)`, igual que `huellas`. La partición cubre $n$ par e impar, y el orden se conserva porque la mitad izquierda va primero.
+
+## `similitudes`
+
+### Especificación 
+
+$$f(hs, ps) = \langle (i, j, J(hs(i), hs(j))) \mid (i, j) \in ps \rangle$$
+
+en el mismo orden de `ps`. Se supone que cada $i$ y cada $j$ de `ps` son posiciones válidas de `hs`, como lo son las de `parejas(hs.length)` y las de `parejasCandidatas`.
+
+Se desea demostrar:
+
+$$\forall hs, \forall ps : P_{\text{similitudes}}(hs, ps) == f(hs, ps)$$
+
+### Demostración
+
+`map` conserva el largo y el orden, y asocia un resultado a cada pareja:
+
+$$P_{\text{similitudes}}(hs, ps) \rightarrow \langle (i, j, \text{jaccard}(hs(i),hs(j))) \mid (i, j) \in ps \rangle$$
+
+**Por posición.** Para cualquier $r$, si $ps(r) = (i, j)$, el patrón `case (primerDocumento, segundoDocumento)` recupera exactamente esos dos valores, y la posición $r$ del resultado es $(i, j, J(hs(i), hs(j)))$. No se omite ni se agrega ninguna pareja, y se conserva el orden. Por la demostración de `jaccard`, $\text{jaccard}(hs(i), hs(j)) == J(hs(i), hs(j))$. 
+Luego el resultado es $f(hs, ps)$. $\blacksquare$ 
+
+### Aplicación a ejemplos
+ 
+`e0` a `e3`, $k = 3$, parejas `(0, 1)`, `(2, 3)` y `(0, 2)`:
+
+| Pareja| $\lvert A \cap B \rvert$ | $\lvert A \cup B \rvert$| $J$|
+|---|---|---|---|
+| `(0, 1)`| 6| $7 + 7 - 6 = 8$ | $6/8 = 0.75$ |
+| `(2, 3)` | 4 | $6 + 6 - 4 = 8$ | $4/8 = 0.5$ |
+| `(0, 2)`| 0 | $7 + 6 - 0 = 13$ | $0/13 = 0$ |
+
+El programa devuelve `Vector((0,1,0.75), (2,3,0.5), (0,2,0.0))`. Con `ps` vacío devuelve `Vector()`.
+
+## `indiceInvertido`
+
+### Especificación
+
+$f(hs)$ es el mapa cuyo dominio es $\lbrace\, g \mid \exists i : g \in H_i \,\rbrace$ y que a cada $g$ le asocia $I(g) = \lbrace\, i \mid g \in H_i \,\rbrace$.
+
+Se supone que $hs(i) = H_i$ para cada $i$, es decir, que $hs$ es el resultado $\text{huellas}(c, k)$.
+
+Se desea demostrar:
+
+$$\forall hs : P_{\text{indiceInvertido}}(hs) == f(hs)$$
+
+### Método
+
+Se demuestra qué contiene cada valor intermedio: primero `entradas`, luego el resultado de `groupBy` y por último el `map` final.
+
+### Lema (entradas)
+
+Sea $n$ la longitud de $hs$:
+
+$$\text{entradas} = \langle(g, i) \mid 0\le i < n,\ g \in hs(i) \rangle$$
+
+*Demostración.* El `for` equivale a $(0 \text{ until } n)\text{.flatMap}(i \rightarrow hs(i)\text{.map}(g\rightarrow(g, i)))$. El primer generador recorre cada posición $i$ y el segundo cada fragmento de $hs(i)$, y `yield` produce un par por cada combinación. Luego `entradas` contiene $(g, i)$ si y solo si $g \in H_i$. $\blacksquare$
+
+### Lema (agrupación)
+
+`groupBy(entrada => entrada._1)` produce un grupo por cada fragmento $g$ que es primera componente de alguna entrada, y ninguno más. El grupo de $g$ es $\lbrace\, (g, i) \mid g \in H_i \,\rbrace$.
+
+*Demostración.* `groupBy` reúne las entradas con la misma clave y solo crea claves que aparecen. Por el lema anterior, las claves son los $g$ que están en alguna huella, y el grupo de $g$ contiene exactamente las entradas $(g, i)$ con $g \in H_i$. $\blacksquare$
+
+### Teorema
+
+$$P_{\text{indiceInvertido}}(hs) \rightarrow \lbrace\, g \mapsto \text{documentos}(\text{grupo}(g)) \,\rbrace = \lbrace\, g \mapsto I(g) \,\rbrace = f(hs)$$
+
+donde $\text{documentos}(\text{grupo}(g))$ es el conjunto de las segundas componentes de las entradas del grupo.
+
+*Demostración.* El `map` final recibe un mapa y devuelve parejas $(g, \text{conjunto})$. Cada clave $g$ aparece en una sola pareja, porque `groupBy` ya las dejó distintas, así que el resultado es un mapa con las mismas claves y no se pierde ninguna. Por el lema de agrupación, esas claves son exactamente los fragmentos que están en alguna huella. Para cada clave $g$, el `map` interior toma la segunda componente de cada entrada de su grupo y `toSet` las pasa a conjunto. Eso da $\lbrace\, i \mid g \in H_i \,\rbrace = I(g)$. $\blacksquare$
+
+### Doble inclusión
+
+Para una clave $g$ del mapa resultante:
+
+* **No se inventan documentos.** Si $i$ pertenece al conjunto asociado a $g$, viene de una entrada $(g, i)$ del `for`. Esa entrada solo pudo generarse porque $g \in hs(i)$.
+* **No se pierden documentos.** Si $g \in hs(i)$, el `for` genera $(g, i)$. `groupBy` lo coloca en el grupo de la clave $g$, el `map` interior extrae $i$ y `toSet` lo conserva.
+
+Las dos implicaciones dan $i \in I(g) \iff g \in H_i$. Esa es la propiedad que usa el Teorema 3 de `parejasCandidatas`.
+
+**Caso límite.** Con huellas vacías, o con `hs` vacío, el `for` no genera ninguna entrada. `groupBy` devuelve un mapa vacío y el resultado es `Map()`.
+
+### Aplicación a ejemplos
+
+`a b c`, `b c d` y `x y z` con $k = 2$. Las huellas son `{(a b), (b c)}`, `{(b c), (c d)}` y `{(x y), (y z)}`. Hay 6 entradas y 5 claves:
+
+
+| Fragmento | Documentos |
+|---|---|
+| `(a b)` | `Set(0)` |
+| `(b c)` | `Set(0, 1)` |
+| `(c d)` | `Set(1)` |
+| `(x y)` | `Set(2)` |
+| `(y z)` | `Set(2)` |
+
+Cada conjunto reúne los documentos cuya huella contiene el fragmento.
+
+## `detectarDirectoPar`
+
+### Especificación 
+
+Sea $n$ el número de documentos y $M$ la secuencia de todas las mediciones, en el orden de `parejas(n)`:
+
+$$M = \langle (i, j, J(H_i, H_j)) \mid 0 \le i < j < n \rangle$$
+
+La especificación $R$ es la de `ranking` aplicada a $M$: las mediciones con $J \ge \tau$, ordenadas según $\prec$ (de mayor a menor similitud, y en empate por $(i, j)$) y truncadas a las primeras $p$.
+
+Se desea demostrar:
+
+$$\forall c, k, \tau, p, \text{corte} : P_{\text{detectarDirectoPar}}(c, k, \tau, p, \text{corte}) == R$$
+
+### Demostración
+
+Se calcula cada pieza, de adentro hacia afuera:
+
+$$\text{huellasCorpus} \rightarrow \text{huellasPar}(c, k) == \text{huellas}(c, k) = \langle H_0, \dots, H_{n-1} \rangle \quad \text{(demostraciones de } \texttt{huellasPar} \text{ y } \texttt{huellas} \text{)}$$
+
+$$\text{todasLasParejas} \rightarrow \text{parejas}(n) = \langle (i, j) \mid 0 \le i < j < n \rangle \quad \text{(demostración de } \texttt{parejas} \text{)}$$
+
+$$\text{similitudesPar}(\dots) == \text{similitudes}(\dots) = \langle (i, j, J(H_i, H_j)) \mid (i, j) \in \text{parejas}(n) \rangle = M \quad \text{(especificación de } \texttt{similitudesPar} \text{ y demostración de } \texttt{similitudes} \text{)}$$ 
+
+$$\text{ranking}(M, \tau, p) == R \quad \text{(Teorema 5)}$$
+
+La última igualdad vale porque `ranking` conserva las mediciones con similitud al menos $\tau$, las ordena según $\prec$ y toma las primeras $p$, que es la definición de $R$. $\blacksquare$
+
+### El valor de `corte`
+
+Ninguna pieza usa `corte` para decidir qué se calcula. Solo determina a partir de qué tamaño `similitudesPar` deja de dividir el trabajo. Por eso el resultado no depende de `corte`. Como la versión sin paralelismo, `detectarDirecto`, es la misma composición con `huellas` y `similitudes`; por las mismas demostraciones también cumple la especificación $R$ y da el mismo resultado.
+
+### El orden de las parejas no importa 
+
+El Teorema 5 dice que el resultado de `ranking` no cambia si las mediciones llegan en otro orden. Por eso, aunque el reparto del trabajo en paralelo juntara las mediciones en otro orden, el resultado de `ranking` sería el mismo.
+
+### Dependencias
+
+Esta demostración compone las demostraciones de `huellas`, `huellasPar`, `parejas`, `similitudes` y `ranking`. De `similitudesPar` usa su especificación (da lo mismo que `similitudes` para cualquier `corte`).
+
+### Casos límite
+
+Con cero o un documento no existen parejas, `parejas(n)` es vacío y el resultado es `Vector()`. Con un umbral mayor que todas las similitudes no hay resultados. Con $p = 0$ el resultado es `Vector()`, porque `ranking` toma las primeras $p$ mediciones.
+
+### Aplicación a ejemplos
+
+`e0` a `e3`, $k = 3$, `corte = 2`. Las seis parejas dan `(0,1)` con 0.75, `(2,3)` con 0.5 y las otras cuatro con 0.0.
+
+| $\tau$ | $p$ | Resultado| Razón|
+|---|---|---|---|
+| 0.4 | 5 | `Vector((0,1,0.75), (2,3,0.5))`| solo esas dos parejas llegan a 0.4 |
+| 0.9| 5 | `Vector()`| ninguna llega a 0.9|
+| 0.0| 3 | `Vector((0,1,0.75), (2,3,0.5), (0,2,0.0))` | pasan las seis; las de 0.0 se desempatan por $(i, j)$ y se toman las tres primeras |
+
+Con otro `corte` el resultado es el mismo, como indica la sección anterior.
