@@ -45,15 +45,62 @@ class SimilitudTest extends AnyFunSuite {
     assert(fragmentos(ts, 2) ==
       Vector(Vector("a", "b"), Vector("b", "c"), Vector("c", "d")))
   }
-
+  // huella
   test("huella: el ejemplo 1 tiene 4, 4 y 3 fragmentos") {
     assert(huella(d0, 3).size == 4)
     assert(huella(d1, 3).size == 4)
     assert(huella(d2, 3).size == 3)
   }
 
+  test("huella: un fragmento repetido cuenta una sola vez"){
+    val d: Documento = ("x", Vector("a", "b", "a", "b"))
+    assert(huella(d, 2) == Set(Vector("a", "b"), Vector("b", "a")))
+  }
   test("huellas: hay una huella por documento") {
     assert(huellas(c1, 3).length == 3)
+  }
+  test("huella: un documento con menos de k palabras tiene huella vacía"){
+    val d: Documento = ("x", Vector("a", "b"))
+    assert(huella(d, 3) == Set[Fragmento]())
+  }
+  test("huella: con k = 1 son las palabras distintas"){
+    val d: Documento = ("y", Vector("a", "a", "b"))
+    assert(huella(d, 1) == Set(Vector("a"), Vector("b")))
+  }
+
+  test("huella: sin repeticiones hay t 'k + 1"){
+    val d: Documento = ("z", Vector("a", "b", "c", "d", "e"))
+    assert(huella(d, 3).size == 5 - 3 + 1)
+    assert(huella(d, 3).contains(Vector("c", "d", "e")))
+  }
+  test("huella: un documento de una sola palabra repetida tiene un fragmento"){
+    val d: Documento = ("w", Vector.fill(6)("z"))
+    assert(huella(d, 2) == Set(Vector("z", "z")))
+  }
+  // huellas
+  test("huellas: un corpus vacío de un vector vacía"){
+    assert(huellas(Vector(), 3) == Vector[Huella]())
+  }
+
+  test("huellas: un corpus de un solo documento da una sola huella"){
+    val c: Corpus = Vector(("a", Vector("x", "y", "z")))
+    assert(huellas(c, 2) == Vector(Set(Vector("x", "y"), Vector("y", "z"))))
+  }
+
+  test("huellas: la posición i es la huella del documento i") {
+    val c: Corpus = Vector(("a", Vector("x", "y", "z")), ("b", Vector("x", "y")), ("c", Vector("p", "q", "r", "s")))
+    assert((0 until c.length).forall(i => huellas(c, 2)(i) == huella(c(i), 2)))
+  }
+
+  test("huellas: conserva la orden del corpus") {
+    val c: Corpus = Vector(("a", Vector("x", "y")), ("b", Vector("p", "q", "r")))
+    assert(huellas(c, 2) ==
+      Vector(Set(Vector("x", "y")), Set(Vector("p", "q"), Vector("q", "r"))))
+  }
+
+  test("huellas: un documento corto deja su huella vacía en su posición") {
+    val c: Corpus = Vector(("a", Vector("x")), ("b", Vector("p", "q")))
+    assert(huellas(c, 2) == Vector(Set[Fragmento](), Set(Vector("p", "q"))))
   }
 
   test("jaccard: ejemplo 2, las dos parejas dan 0.75 y 0.5") {
@@ -64,16 +111,85 @@ class SimilitudTest extends AnyFunSuite {
   test("parejas: hay n (n - 1) / 2") {
     assert(parejas(5).length == 10)
   }
-
+  // similitudes
   test("similitudes: el ejemplo 1 da 1/3, 0 y 0") {
     val hs = huellas(c1, 3)
     val ms = similitudes(hs, parejas(3)).map(_._3)
     assert(math.abs(ms(0) - 2.0 / 6.0) < eps && ms(1) == 0.0 && ms(2) == 0.0)
   }
+  val hs3: Vector[Huella] = Vector(
+    Set(Vector("a"), Vector("b")),
+    Set(Vector("b"), Vector("c")),
+    Set(Vector("x"))
+  )
 
+  test("similitudes: una pareja con un fragmento común de tres de 1/3") {
+    val ms = similitudes(hs3, Vector((0, 1)))
+    assert(ms.length == 1 && ms(0)._1 == 0 && ms(0)._2 ==1)
+    assert(math.abs(ms(0)._3 - 1.0 / 3.0) < eps)
+  }
+
+  test("similitudes: respeta el orden de las parejas que recibe") {
+    val ms = similitudes(hs3, Vector((1, 2), (0, 1)))
+    assert(ms.map(m => (m._1, m._2)) == Vector((1, 2), (0, 1)))
+    assert(ms(0)._3 == 0.0)
+  }
+
+  test("similitudes: sin parejas no hay mediciones") {
+    assert(similitudes(hs3, Vector()) == Vector[Medicion]())
+  }
+
+  test("similitudes: dos documentos con la misma huella de 1") {
+    val iguales: Vector[Huella] = Vector(Set(Vector("a")), Set(Vector("a")))
+    assert(similitudes(iguales, Vector((0, 1))).map(_._3) == Vector(1.0))
+  }
+
+  test("similitudes:  dos huellas vacías de 0") {
+    val vacias: Vector[Huella] = Vector(Set[Fragmento](), Set[Fragmento]())
+    assert(similitudes(vacias, Vector((0, 1))).map(_._3) == Vector(0.0))
+  }
+  // indiceInvertido
   test("indiceInvertido: el fragmento inicial de d0 está en d0 y en d1") {
     val idx = indiceInvertido(huellas(c1, 3))
     assert(idx(Vector("el", "gato", "duerme")) == Set(0, 1))
+  }
+
+  test("indiceInvertido: un fragmento que está en los tres documentos"){
+    val hs: Vector[Huella] = Vector(
+      Set(Vector("a"), Vector("b")),
+      Set(Vector("b"), Vector("c")),
+      Set(Vector("b")))
+    assert(indiceInvertido(hs)(Vector("b")) == Set(0, 1, 2))
+
+  }
+
+  test("indiceInvertido: un fragmento que está en un solo documento"){
+    val hs: Vector[Huella] = Vector(
+      Set(Vector("a"), Vector("b")),
+      Set(Vector("b"), Vector("c")),
+      Set(Vector("b")))
+    assert(indiceInvertido(hs)(Vector("a")) == Set(0))
+    assert(indiceInvertido(hs)(Vector("c")) == Set(1))
+  }
+
+  test("indiceInvertido: el índice completo de tres huellas") {
+    val hs: Vector[Huella] = Vector(
+      Set(Vector("a"), Vector("b")),
+      Set(Vector("b"), Vector("c")),
+      Set(Vector("b")))
+    assert(indiceInvertido(hs) == Map(
+      Vector("a") -> Set(0),
+      Vector("b") -> Set(0, 1, 2),
+      Vector("c") -> Set(1)))
+  }
+
+  test("indiceInvertido: un fragmento que nadie tiene no aparece"){
+    val hs: Vector[Huella] = Vector(Set(Vector("a")), Set(Vector("b")))
+    assert(!indiceInvertido(hs).contains(Vector("z")))
+  }
+
+  test("indiceInvertido: sin huellas el índice queda vacío"){
+    assert(indiceInvertido(Vector[Huella]()) == Map())
   }
 
   test("parejasCandidatas: en el ejemplo 2 quedan dos de seis") {
