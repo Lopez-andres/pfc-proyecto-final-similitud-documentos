@@ -75,6 +75,43 @@ class SimilitudParTest extends AnyFunSuite {
     assert(similitudesPar(hs, ps, 100) == similitudes(hs, ps))
   }
 
+  // Nuevos test similitud par
+
+  val a: Fragmento = Vector("a")
+  val b: Fragmento = Vector("b")
+  val c: Fragmento = Vector("c")
+
+  test("similitudesPar: Sin parejas"){
+    assert(similitudesPar(Vector(), Vector(), 1) == Vector())
+  }
+
+  test("similitudesPar: Dos parejas en paralelo"){
+    val hs = Vector(Set(a), Set(a), Set(b))
+    val ps = Vector((0, 1), (0, 2))
+    assert(similitudesPar(hs, ps, 1) ==
+      Vector((0, 1, 1.0), (0, 2, 0.0))
+    )
+  }
+
+  test("similitudesPar: Huellas iguales"){
+    val hs = Vector(Set(a), Set(a))
+    assert(similitudesPar(hs, Vector((0, 1)), 1) ==
+    Vector((0, 1, 1.0)))
+  }
+
+  test("similitudesPar: Huellas diferentes"){
+    val hs = Vector(Set(a), Set(b))
+    assert(similitudesPar(hs, Vector((0, 1)), 1) ==
+      Vector((0, 1, 0.0)))
+  }
+
+  test("similitudesPar: Comparten una parte"){
+    val hs = Vector(Set(a, b), Set(a))
+    val pareja = (0, 1)
+    assert(similitudesPar(hs, Vector(pareja), 1) ==
+    Vector((0, 1, 0.5)))
+  }
+
   test("fusionar: une los conjuntos del fragmento que está en los dos") {
     val g: Fragmento = Vector("a", "b")
     val h: Fragmento = Vector("c", "d")
@@ -84,9 +121,71 @@ class SimilitudParTest extends AnyFunSuite {
     assert(fusionar(i1, Map()) == i1)
   }
 
+  // Nuevos test fusionar
+
+  test("fusionar: Dos indices vacios"){
+    val vacio: Indice = Map()
+    assert(fusionar(vacio, vacio) == vacio)
+  }
+
+  test("fusionar: Primer indice vacio"){
+    val i1: Indice = Map()
+    val i2: Indice = Map(a -> Set(0))
+    assert(fusionar(i1, i2) == i2)
+  }
+
+  test("fusionar: Segundo indice vacio"){
+    val i1: Indice = Map(a -> Set(0))
+    val i2: Indice = Map()
+    assert(fusionar(i1, i2) == i1)
+  }
+
+  test("fusionar: fragmentos diferentes"){
+    val i1: Indice = Map(a -> Set(0))
+    val i2: Indice = Map(b -> Set(1))
+    assert(fusionar(i1, i2) ==
+      Map(a -> Set(0), b -> Set(1)))
+  }
+
+  test("fusionar: Sin repetidos"){
+    val i1: Indice = Map(a -> Set(0))
+    val i2: Indice = Map(a -> Set(0, 1))
+    assert(fusionar(i1, i2) ==
+      Map(a -> Set(0, 1)))
+  }
+
+
   test("indiceInvertidoPar: da lo mismo que la secuencial en los ejemplos") {
     assert(indiceInvertidoPar(huellas(c1, 3)) == indiceInvertido(huellas(c1, 3)))
     assert(indiceInvertidoPar(huellas(c2, 3)) == indiceInvertido(huellas(c2, 3)))
+  }
+
+  // Nuevos test IndiceInvertidoPar
+
+  test("indiceInvertidoPar: Sin huellas"){
+    val hs: Vector[Huella] = Vector()
+    val esperado: Indice = Map()
+    assert(indiceInvertidoPar(hs) == esperado)
+  }
+
+  test("indiceInvertidoPar: Una Huella"){
+    val hs: Vector[Huella] = Vector(Set(a))
+    assert(indiceInvertidoPar(hs) == Map(a -> Set(0)))
+  }
+
+  test("indiceInvertidoPar: Fragmento igual"){
+    assert(indiceInvertidoPar(Vector(Set(a), Set(a))) ==
+      Map(a -> Set(0, 1)))
+  }
+
+  test("indiceInvertidoPar: Fragmentos diferentes"){
+    assert(indiceInvertidoPar(Vector(Set(a), Set(b))) ==
+      Map(a -> Set(0), b -> Set(1)))
+  }
+
+  test("indiceInvertidoPar: Posiciones correctas"){
+    assert(indiceInvertidoPar(Vector(Set(a), Set(b), Set(a))) ==
+      Map(a -> Set(0, 2), b -> Set(1)))
   }
 
   test("detectar: las cuatro versiones coinciden") {
@@ -94,6 +193,46 @@ class SimilitudParTest extends AnyFunSuite {
     assert(detectarConIndice(c2, 3, 0.3, 5) == directo)
     assert(detectarDirectoPar(c2, 3, 0.3, 5, 2) == directo)
     assert(detectarConIndicePar(c2, 3, 0.3, 5, 2) == directo)
+  }
+
+  // Nuevos test dectectarConIndicePar
+
+  test("detectarConIndicePar: Corpus vacio"){
+    assert(detectarConIndicePar(Vector(), 2, 0.2, 5, 1) ==
+      Vector())
+  }
+
+  test("detectarConIndicePar: Un documento"){
+    val corpus: Corpus = Vector(("d0", Vector("a", "b")))
+    assert(detectarConIndicePar(corpus, 2, 0.2, 5, 1) ==
+      Vector())
+  }
+
+  test("detectarConIndicePar: Documentos iguales"){
+    val corpus: Corpus = Vector(
+       ("d0", Vector("a", "b")),
+       ("d1", Vector("a", "b"))
+    )
+    assert(detectarConIndicePar(corpus, 2, 0.5, 5, 1) ==
+      Vector((0, 1, 1.0)))
+  }
+
+  test("detectarConIndicePar: Documentos diferentes"){
+    val corpus: Corpus = Vector(
+      ("do", Vector("a", "b")),
+      ("d1", Vector("x", "y"))
+    )
+    assert(detectarConIndicePar(corpus, 2, 0.2, 5, 1) ==
+      Vector())
+  }
+
+  test("detectarConIndicePar: Similitud Parcial"){
+    val corpus: Corpus = Vector(
+      ("do", Vector("a", "b", "c")),
+      ("d1", Vector("a", "b", "d"))
+    )
+    assert(detectarConIndicePar(corpus, 2, 0.2, 5, 1) ==
+      Vector((0, 1, 1.0 / 3.0)))
   }
 
   //detectarDirectoPar

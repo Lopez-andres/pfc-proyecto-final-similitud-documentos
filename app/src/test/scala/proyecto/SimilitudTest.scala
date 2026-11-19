@@ -209,9 +209,97 @@ class SimilitudTest extends AnyFunSuite {
     assert(math.abs(r(0)._3 - 0.75) < eps && math.abs(r(1)._3 - 0.5) < eps)
   }
 
+  // Nuevas pruebas detectarDirecto
+
+  test("detectarDirecto: Corpus vacío"){
+    val corpus: Corpus = Vector()
+    assert(detectarDirecto(corpus, 2, 0.2, 5) ==
+      Vector())
+  }
+
+  test("detectarDirecto: Un documento"){
+    val corpus: Corpus = Vector(
+      ("d0", Vector("a", "b"))
+    )
+    assert(detectarDirecto(corpus, 2, 0.2, 5) ==
+      Vector())
+  }
+
+  test("detectarDirecto: Documentos iguales"){
+    val corpus: Corpus = Vector(
+      ("d0", Vector("a", "b")),
+      ("d1", Vector("a", "b"))
+    )
+    assert(detectarDirecto(corpus, 2, 0.2, 5) ==
+      Vector((0, 1, 1.0)))
+  }
+
+  test("detectarDirecto: Documentos diferentes"){
+    val corpus: Corpus = Vector(
+      ("d0", Vector("a", "b")),
+      ("d1", Vector("x", "y"))
+    )
+    assert(detectarDirecto(corpus, 2, 0.2, 5) ==
+      Vector())
+  }
+
+  test("detectarDirecto: Ranking de similitud"){
+    val corpus: Corpus = Vector(
+      ("d0", Vector("a", "b")),
+      ("d1", Vector("a", "b")),
+      ("d2", Vector("a"))
+    )
+    assert(detectarDirecto(corpus, 1, 0.2, 1) ==
+      Vector((0, 1, 1.0)))
+  }
+
   test("detectar: las dos soluciones coinciden en los ejemplos") {
     assert(detectarDirecto(c1, 3, 0.2, 5) == detectarConIndice(c1, 3, 0.2, 5))
     assert(detectarDirecto(c2, 3, 0.3, 5) == detectarConIndice(c2, 3, 0.3, 5))
+  }
+
+
+  // Nuevos test de detectarConIndice
+
+  test("dectarConIndice: Corpus vacío"){
+    val corpus: Corpus = Vector()
+    assert(detectarConIndice(corpus, 2, 0.2, 5) ==
+      Vector())
+  }
+
+  test("dectarConIndice: Un documento"){
+    val corpus: Corpus = Vector(
+      ("d0", Vector("a", "b"))
+    )
+    assert(detectarConIndice(corpus, 2, 0.2, 5) ==
+      Vector())
+  }
+
+  test("dectarConIndice: Documentos iguales"){
+    val corpus: Corpus = Vector(
+      ("d0", Vector("a", "b")),
+      ("d1", Vector("a", "b")),
+    )
+    assert(detectarConIndice(corpus, 2, 0.2, 5) ==
+      Vector((0, 1, 1.0)))
+  }
+
+  test("dectarConIndice: Documentos diferentes"){
+    val corpus: Corpus = Vector(
+      ("d0", Vector("a", "b")),
+      ("d1", Vector("x", "y")),
+    )
+    assert(detectarConIndice(corpus, 2, 0.2, 5) ==
+      Vector())
+  }
+
+  test("dectarConIndice: Una pareja candidata"){
+    val corpus: Corpus = Vector(
+      ("d0", Vector("a", "b", "c")),
+      ("d1", Vector("a", "b", "d")),
+    )
+    assert(detectarConIndice(corpus, 2, 0.2, 5) ==
+      Vector((0, 1, 1.0 / 3.0)))
   }
 
   // normalizar

@@ -318,14 +318,14 @@ misma secuencia, luego $\text{ranking}(ss', \tau, p) == \text{ranking}(ss, \tau,
 Las pruebas están en `app/src/test/scala/proyecto/SimilitudTest.scala` y se ejecutan con
 `./gradlew test`. Además de las de contrato, cada función tiene cinco casos propios:
 
-| Función             | Qué cubren los cinco casos                                                                 |
-|---------------------|--------------------------------------------------------------------------------------------|
+| Función             | Qué cubren los cinco casos                                                                     |
+|---------------------|------------------------------------------------------------------------------------------------|
 | `normalizar`        | signos de puntuación, separadores repetidos, texto vacío, dígitos y última palabra, tildes y ñ |
 | `fragmentos`        | `k = 1`, `k` igual al largo, menos de `k` palabras, fragmentos repetidos, cantidad `t - k + 1` |
-| `jaccard`           | huellas iguales, disjuntas, vacías, una contenida en otra, solapamiento parcial y simetría  |
-| `parejas`           | `n = 4` completo, `n = 0` y `n = 1`, `n = 2`, cantidad e `i < j`, sin repetidos y en orden  |
-| `parejasCandidatas` | índice vacío, conjuntos de un documento, pareja repetida, tres documentos, entradas mezcladas |
-| `ranking`           | umbral inclusivo, empates, truncar a `p`, vacío, vector largo                                |
+| `jaccard`           | huellas iguales, disjuntas, vacías, una contenida en otra, solapamiento parcial y simetría     |
+| `parejas`           | `n = 4` completo, `n = 0` y `n = 1`, `n = 2`, cantidad e `i < j`, sin repetidos y en orden     |
+| `parejasCandidatas` | índice vacío, conjuntos de un documento, pareja repetida, tres documentos, entradas mezcladas  |
+| `ranking`           | umbral inclusivo, empates, truncar a `p`, vacío, vector largo                                  |
 
 Cada caso corresponde a una parte de la demostración: los vacíos a los casos base, los 
 repetidos y los empates a los lemas, y las cantidades a las fórmulas.
@@ -336,21 +336,21 @@ Las funciones `huella`, `huellas`, `huellasPar`, `similitudes`, `indiceInvertido
 
 **Notación adicional.** Se siguen usando $g_i$, $H_k(d)$ y $J$ de las secciones anteriores.
 
-| Símbolo | Significado |
-|---|---|
-| $H_i$ | abrevia $H_k(d_i)$, la huella del documento $i$, cuando $k$ se sobreentiende |
-| $I(g)$ | $\lbrace\, i \mid g \in H_i \,\rbrace$: los documentos cuya huella contiene el fragmento $g$ |
-| $\tau$, $p$ | umbral y número máximo de resultados |
+| Símbolo     | Significado                                                                                  |
+|-------------|----------------------------------------------------------------------------------------------|
+| $H_i$       | abrevia $H_k(d_i)$, la huella del documento $i$, cuando $k$ se sobreentiende                 |
+| $I(g)$      | $\lbrace\, i \mid g \in H_i \,\rbrace$: los documentos cuya huella contiene el fragmento $g$ |
+| $\tau$, $p$ | umbral y número máximo de resultados                                                         |
 
 **Resultados ya demostrados que se usan como hechos.**
 
-| Función | Qué se usa |
-|---|---|
-| `fragmentos(ts, k)` | Teorema 1: devuelve $\langle g_0, \dots, g_{t-k} \rangle$ si $t \ge k$ y $\langle \rangle$ si $t < k$ |
-| `jaccard(A, B)` | su demostración: devuelve $J(A, B)$ |
-| `parejas(n)` | su demostración: todas las $(i, j)$ con $0 \le i < j < n$, sin repetir y en orden lexicográfico|
-| `ranking(ss, umbral, p)`| Teorema 5: deja las mediciones con $s \ge \tau$, las ordena según $\prec$ y toma las primeras $p$. Además no depende del orden de llegada |
-| `similitudesPar(hs, ps, corte)` | se usa su especificación: da el mismo resultado que `similitudes(hs, ps)` para cualquier `corte` |
+| Función                         | Qué se usa                                                                                                                                |
+|---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| `fragmentos(ts, k)`             | Teorema 1: devuelve $\langle g_0, \dots, g_{t-k} \rangle$ si $t \ge k$ y $\langle \rangle$ si $t < k$                                     |
+| `jaccard(A, B)`                 | su demostración: devuelve $J(A, B)$                                                                                                       |
+| `parejas(n)`                    | su demostración: todas las $(i, j)$ con $0 \le i < j < n$, sin repetir y en orden lexicográfico                                           |
+| `ranking(ss, umbral, p)`        | Teorema 5: deja las mediciones con $s \ge \tau$, las ordena según $\prec$ y toma las primeras $p$. Además no depende del orden de llegada |
+| `similitudesPar(hs, ps, corte)` | se usa su especificación: da el mismo resultado que `similitudes(hs, ps)` para cualquier `corte`                                          |
 
 **Hechos sobre la biblioteca de Scala**, los vistos en clase para colecciones y para `parallel`:
 
@@ -398,11 +398,11 @@ con igualdad si y solo si el documento no repite ningún fragmento. Se escribe $
 
 ### Aplicación a ejemplos
 
-| Documento | $k$ | $N$ | $\lvert H \rvert$ | Caso |
-|---|---|---|---|---|
-| `a b a b a b` | 2 | 5 | 2 | repite: desigualdad estricta |
-| `la casa es grande y la casa es azul` | 3 | 7 | 6 | repite `(la casa es)` |
-| `el gato duerme en el sofa` | 3 | 4 | 4 | no repite: igualdad |
+| Documento                             | $k$ | $N$ | $\lvert H \rvert$ | Caso                         |
+|---------------------------------------|-----|-----|-------------------|------------------------------|
+| `a b a b a b`                         | 2   | 5   | 2                 | repite: desigualdad estricta |
+| `la casa es grande y la casa es azul` | 3   | 7   | 6                 | repite `(la casa es)`        |
+| `el gato duerme en el sofa`           | 3   | 4   | 4                 | no repite: igualdad          |
 
 ## `huellas`
 
@@ -484,11 +484,11 @@ Si $n = 1$, $m = 0$: la izquierda queda vacía y la derecha contiene el document
 
 ### Aplicación a ejemplos
 
-| $n$ | $m$ | Izquierda | Derecha |
-|---|---|---|---|
-| 3 | 1 | $d_0$ | $d_1, d_2$ |
-| 4 | 2 | $d_0, d_1$ | $d_2, d_3$ |
-| 5 | 2 | $d_0, d_1$ | $d_2, d_3, d_4$ |
+| $n$ | $m$ | Izquierda  | Derecha         |
+|-----|-----|------------|-----------------|
+| 3   | 1   | $d_0$      | $d_1, d_2$      |
+| 4   | 2   | $d_0, d_1$ | $d_2, d_3$      |
+| 5   | 2   | $d_0, d_1$ | $d_2, d_3, d_4$ |
 
 Con `e0` a `e3` y $k = 3$, el resultado tiene tamaños `Vector(7, 7, 6, 6)`, igual que `huellas`. La partición cubre $n$ par e impar, y el orden se conserva porque la mitad izquierda va primero.
 
@@ -517,11 +517,11 @@ Luego el resultado es $f(hs, ps)$. $\blacksquare$
  
 `e0` a `e3`, $k = 3$, parejas `(0, 1)`, `(2, 3)` y `(0, 2)`:
 
-| Pareja| $\lvert A \cap B \rvert$ | $\lvert A \cup B \rvert$| $J$|
-|---|---|---|---|
-| `(0, 1)`| 6| $7 + 7 - 6 = 8$ | $6/8 = 0.75$ |
-| `(2, 3)` | 4 | $6 + 6 - 4 = 8$ | $4/8 = 0.5$ |
-| `(0, 2)`| 0 | $7 + 6 - 0 = 13$ | $0/13 = 0$ |
+| Pareja   | $\lvert A \cap B \rvert$ | $\lvert A \cup B \rvert$ | $J$          |
+|----------|--------------------------|--------------------------|--------------|
+| `(0, 1)` | 6                        | $7 + 7 - 6 = 8$          | $6/8 = 0.75$ |
+| `(2, 3)` | 4                        | $6 + 6 - 4 = 8$          | $4/8 = 0.5$  |
+| `(0, 2)` | 0                        | $7 + 6 - 0 = 13$         | $0/13 = 0$   |
 
 El programa devuelve `Vector((0,1,0.75), (2,3,0.5), (0,2,0.0))`. Con `ps` vacío devuelve `Vector()`.
 
@@ -579,13 +579,13 @@ Las dos implicaciones dan $i \in I(g) \iff g \in H_i$. Esa es la propiedad que u
 `a b c`, `b c d` y `x y z` con $k = 2$. Las huellas son `{(a b), (b c)}`, `{(b c), (c d)}` y `{(x y), (y z)}`. Hay 6 entradas y 5 claves:
 
 
-| Fragmento | Documentos |
-|---|---|
-| `(a b)` | `Set(0)` |
-| `(b c)` | `Set(0, 1)` |
-| `(c d)` | `Set(1)` |
-| `(x y)` | `Set(2)` |
-| `(y z)` | `Set(2)` |
+| Fragmento | Documentos  |
+|-----------|-------------|
+| `(a b)`   | `Set(0)`    |
+| `(b c)`   | `Set(0, 1)` |
+| `(c d)`   | `Set(1)`    |
+| `(x y)`   | `Set(2)`    |
+| `(y z)`   | `Set(2)`    |
 
 Cada conjunto reúne los documentos cuya huella contiene el fragmento.
 
@@ -637,10 +637,89 @@ Con cero o un documento no existen parejas, `parejas(n)` es vacío y el resultad
 
 `e0` a `e3`, $k = 3$, `corte = 2`. Las seis parejas dan `(0,1)` con 0.75, `(2,3)` con 0.5 y las otras cuatro con 0.0.
 
-| $\tau$ | $p$ | Resultado| Razón|
-|---|---|---|---|
-| 0.4 | 5 | `Vector((0,1,0.75), (2,3,0.5))`| solo esas dos parejas llegan a 0.4 |
-| 0.9| 5 | `Vector()`| ninguna llega a 0.9|
-| 0.0| 3 | `Vector((0,1,0.75), (2,3,0.5), (0,2,0.0))` | pasan las seis; las de 0.0 se desempatan por $(i, j)$ y se toman las tres primeras |
+| $\tau$ | $p$ | Resultado                                  | Razón                                                                              |
+|--------|-----|--------------------------------------------|------------------------------------------------------------------------------------|
+| 0.4    | 5   | `Vector((0,1,0.75), (2,3,0.5))`            | solo esas dos parejas llegan a 0.4                                                 |
+| 0.9    | 5   | `Vector()`                                 | ninguna llega a 0.9                                                                |
+| 0.0    | 3   | `Vector((0,1,0.75), (2,3,0.5), (0,2,0.0))` | pasan las seis; las de 0.0 se desempatan por $(i, j)$ y se toman las tres primeras |
 
 Con otro `corte` el resultado es el mismo, como indica la sección anterior.
+
+
+## `detectarConIndice`
+
+### Especificación
+
+Sea $c = \langle d_0,d_1,\dots,d_{n-1}\rangle$ un corpus de $n$ documentos y sea $H_i = H_k(d_i)$ la huella del 
+documento $i$, formado por fragmentos de $k$ palabras consecutivas 
+
+Como tal debe calcular la similitud de todas las parejas de documentos y seleccionar aquellas que cumplen el umbral 
+establecido el número total de parejas es: $N = \frac{n(n-1)}{2}$ 
+
+La similitud entre dos documentos se calcula mediante el índice de Jaccard:
+$J(H_i,H_j) = \frac{|H_i\cap H_j|}{|H_i\cup H_j|}$ 
+
+Sea $M$ la secuencia de mediciones: $M = \langle(i,j,J(H_i,H_j))\mid 0\le i<j<n\rangle$, siendo su especificación:
+$f(c,k,\tau,p)=ranking(M,\tau,p)$ donde se desea demostrar $P_{\text{detectarDirecto}}(c,k,\tau,p) = f(c,k,\tau,p)$
+
+### Demostración 
+
+La implementación usa las funciones `huella`, `parejas`, `similitudes` y `ranking`, el programa ejecuta
+
+``` Scala
+val hs = huellas(c, k)
+ranking(similitudes(hs, parejas(hs.length)), umbral, p)
+```
+
+#### Paso 1: Cálculo de las huellas
+
+Por la demostración de `huellas`, se obtienen una huella por cada documento del corpus, conservando su 
+posición original: $hs = \langle H_0,H_1,\dots,H_{n-1}\rangle$
+Por tanto, $hs.length=n$
+
+#### Paso 2: Generación de parejas 
+
+La función `parejas(n)` genera todas las combinaciones válidas $(i, j)$ con $i < j$.
+
+Por su demostración de corrección no omite ninguna pareja, no genera repetidas y conserva el orden lexicográfico,
+el número de parejas es: $\sum_{i=0}^{n-1}(n-1-i) = \frac{n(n-1)}{2}$
+
+#### Paso 3: Cálculo de similitudes
+
+La función `similitudes` recibe las huellas y las parejas generadas. Para cada pareja $(i, j)$ devuelve:
+$(i,j,J(H_i,H_j))$, por la demostración de `similitudes`, la secuencia resultante contiene exactamente las mediciones 
+de $M$
+
+#### Paso 4: Aplicación de ranking
+
+La función `ranking` realizar tres operaciones:
+1. Conserva las mediciones cuya similitud es mayot o igual al umbral $\tau$
+2. Ordena las mediciones de mayor a menor similitud, resolviendo los empates por posición
+3. Selecciona las primeras $p$ mediciones
+
+Por el Teorema 5 de `ranking` estas operaciones cumplen su especificación, entonces 
+$P_{\text{detectarDirecto}}(c,k,\tau,p) = ranking(M,\tau,p) = f(c,k,\tau,p)$, por lo tanto, `detectarDirecto` cumple 
+su especificación.
+
+#### Caso límite
+
+- Si el corpus está vacío, no existe parejas y el resultado es `Vector()`
+- Si el corpus contiene un solo documento, tampococ existen parejas
+- Si $p = 0$, el resultado es vacío
+- Si ninguna similitud alcanza el umbral
+
+
+``` Scala
+```
+
+``` Scala
+```
+
+``` Scala
+```
+
+``` Scala
+```
+
+``` Scala
+```
